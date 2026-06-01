@@ -11,13 +11,10 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1e3c72; overflow: hidden; }
         #map { height: 100%; width: 100%; display: none; position: absolute; top: 0; bottom: 0; left: 0; right: 0; }
         
-        /* ലോഗിൻ സ്ക്രീൻ */
         .login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
         .login-box { padding: 30px 25px; width: 85%; max-width: 340px; background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); text-align: center; box-sizing: border-box; }
         .login-box h2 { margin: 0 0 8px 0; color: #1e3c72; font-size: 22px; font-weight: 700; }
@@ -28,18 +25,13 @@
         .designer-credits { margin-top: 25px; font-size: 10px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; }
         .designer-credits strong { color: #1e3c72; }
 
-        /* മൊബൈൽ സെലക്ഷൻ മെനു */
         .select-container {
             position: absolute; top: 12px; left: 12px; right: 70px; z-index: 1100;
             display: none; background: white; padding: 4px; border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.25); border: 1px solid #1e3c72;
         }
-        .point-selector {
-            width: 100%; padding: 10px; font-size: 14px; font-weight: bold;
-            color: #1e3c72; border: none; background: white; outline: none; cursor: pointer;
-        }
+        .point-selector { width: 100%; padding: 10px; font-size: 14px; font-weight: bold; color: #1e3c72; border: none; background: white; outline: none; cursor: pointer; }
 
-        /* കറന്റ് ലൊക്കേഷൻ ഫ്ലോട്ടിങ് ബട്ടൺ */
         .locate-btn {
             position: absolute; bottom: 45px; right: 16px; z-index: 1100; display: none;
             width: 50px; height: 50px; background: #ffffff; color: #1e3c72; border: 2px solid #1e3c72;
@@ -48,11 +40,9 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* ഫൂട്ടർ ബാനർ */
         .map-footer { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 5px 12px; border-radius: 15px; font-size: 10px; font-weight: bold; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.2); white-space: nowrap; pointer-events: none; }
         .map-footer span { color: #1e3c72; }
 
-        /* ടേബിൾ & പോപ്പ്അപ്പ് */
         .gis-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
         .gis-table td { border: 1px solid #eef2f5; padding: 6px 8px; font-size: 12px; color: #495057; }
         .gis-table tr:nth-child(odd){ background-color: #f8f9fa; }
@@ -101,20 +91,16 @@ var userLatLng = null;
 var routingControl = null;
 var featuresMap = {};
 
-// 🔒 സുരക്ഷാ മാറ്റങ്ങൾ ഇവിടെയാണ്:
+// 💡 ലോഗിൻ വിവരങ്ങൾ ഇവിടെ നേരിട്ട് നൽകിയിരിക്കുന്നു
 var ALLOWED_USER = "faisal";
-// "@Sajco" എന്ന പാസ്‌വേഡിന്റെ സുരക്ഷിതമായ SHA-256 ഹാഷ് കോഡ് താഴെ നൽകുന്നു:
-var PASSWORD_HASH = "e760c49a626227dfbb500c25a1e74a81b369da993700b093375f0a071597b872";
+var ALLOWED_PASS = "@Sajco";
 
 function checkLogin() {
     var userInput = document.getElementById("username").value.trim().toLowerCase();
     var passInput = document.getElementById("password").value;
     
-    // യൂസർ ടൈപ്പ് ചെയ്യുന്ന പാസ്‌വേഡിനെ തത്സമയം SHA-256 ഹാഷ് ആക്കി മാറ്റുന്നു
-    var inputHash = CryptoJS.SHA256(passInput).toString();
-    
-    // ഹാഷുകൾ തമ്മിലാണ് ഇവിടെ ഒത്തുനോക്കുന്നത്, അതുകൊണ്ട് ശരിക്കുള്ള പാസ്‌വേഡ് കോഡിൽ എവിടെയും ഇല്ല!
-    if(userInput === ALLOWED_USER && inputHash === PASSWORD_HASH) {
+    // ഒരു കൺഫ്യൂഷനും ഇല്ലാതെ നേരിട്ട് ഒത്തുനോക്കുന്നു
+    if(userInput === ALLOWED_USER && passInput === ALLOWED_PASS) {
         document.getElementById("loginScreen").style.display = "none";
         document.getElementById("map").style.display = "block";
         document.getElementById("selectContainer").style.display = "block";
