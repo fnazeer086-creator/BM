@@ -69,46 +69,6 @@ var map;
 var userLatLng = null;
 var routingControl = null;
 
-// നിങ്ങളുടെ ഇമേജുകളിൽ നിന്നുള്ള UTM ഡാറ്റ കൃത്യമായി ഗ്ലോബൽ Lat/Lng കോർഡിനേറ്റിലേക്ക് മാറ്റിയത്
-var myGisData = {
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [39.273039, 21.498111] // SA-07 യഥാർത്ഥ ലൊക്കേഷൻ (Jeddah Area)
-      },
-      "properties": {
-        "ObjectID": 7,
-        "NO": 7,
-        "Easting": 528441.206,
-        "Northing": 2377303.99,
-        "ELE#": 52.112,
-        "RE-MARK": "SA-07",
-        "Note": "L01"
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [39.272869, 21.497571] // SAR-04 യഥാർത്ഥ ലൊക്കേഷൻ
-      },
-      "properties": {
-        "OBJECTID": 89,
-        "NO_": 89,
-        "Easting": 528423.572,
-        "Northing": 2377244.229,
-        "ELE_": 52.805,
-        "RE_MARK": "SAR-04",
-        "Note": "ROSHAN AREA",
-        "Length_m": 0
-      }
-    }
-  ]
-};
-
 function checkLogin() {
     var user = document.getElementById("username").value;
     var pass = document.getElementById("password").value;
@@ -123,8 +83,8 @@ function checkLogin() {
 }
 
 function initMap() {
-    // ഡാറ്റ ഉള്ള സ്ഥലത്തേക്ക് മാപ്പ് ഓട്ടോമാറ്റിക് കേന്ദ്രീകരിക്കുന്നു
-    map = L.map('map').setView([21.498111, 39.273039], 16);
+    // സൗദി അറേബ്യയുടെ റീജിയണിലേക്ക് ഡിഫോൾട്ട് സെറ്റ് ചെയ്യുന്നു
+    map = L.map('map').setView([24.0, 45.0], 6);
 
     var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -139,7 +99,7 @@ function initMap() {
     };
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
-    // ലൈവ് ലൊക്കേഷൻ ട്രാക്കിംഗ്
+    // ലൈവ് ജിപിഎസ് ലൊക്കേഷൻ
     map.locate({setView: false, watch: true, enableHighAccuracy: true});
     map.on('locationfound', function(e) {
         userLatLng = e.latlng;
@@ -150,40 +110,56 @@ function initMap() {
         }
     });
 
-    plotGisData();
+    // 💡 ഇവിടെയാണ് മാറ്റം: നിങ്ങളുടെ 'data.geojson' ഫയലിലുള്ള എല്ലാ പോയിന്റുകളും ഒന്നിച്ച് ലോഡ് ചെയ്യും
+    loadGisDataFromFolder();
 }
 
-function plotGisData() {
-    var gisLayer = L.geoJSON(myGisData, {
-        onEachFeature: function (feature, layer) {
-            var props = feature.properties;
-            var labelText = props["RE-MARK"] || props["RE_MARK"] || "Benchmark";
-            
-            layer.bindTooltip(labelText, {permanent: true, direction: 'top', className: 'custom-label', offset: [0, -8]});
+function loadGisDataFromFolder() {
+    fetch('data.geojson')
+    .then(response => {
+        if (!response.ok) throw new Error("data.geojson ഫയൽ ലിങ്കിൽ കണ്ടെത്താൻ കഴിഞ്ഞില്ല!");
+        return response.json();
+    })
+    .then(geojsonData => {
+        var gisLayer = L.geoJSON(geojsonData, {
+            onEachFeature: function (feature, layer) {
+                if (feature.properties) {
+                    var props = feature.properties;
+                    var labelText = props["RE-MARK"] || props["RE_MARK"] || props["Name"] || "Benchmark";
+                    
+                    layer.bindTooltip(labelText, {permanent: true, direction: 'top', className: 'custom-label', offset: [0, -8]});
 
-            var popupContent = "<div class='popup-title'>Attribute Data</div><table class='gis-table'>";
-            for (var key in props) {
-                if (props.hasOwnProperty(key)) {
-                    popupContent += "<tr><td><b>" + key + "</b></td><td>" + props[key] + "</td></tr>";
+                    var popupContent = "<div class='popup-title'>Attribute Data</div><table class='gis-table'>";
+                    for (var key in props) {
+                        if (props.hasOwnProperty(key) && !['styleUrl', 'styleHash', 'description'].includes(key)) {
+                            popupContent += "<tr><td><b>" + key + "</b></td><td>" + props[key] + "</td></tr>";
+                        }
+                    }
+                    popupContent += "</table>";
+                    
+                    var lat = layer.getLatLng().lat;
+                    var lng = layer.getLatLng().lng;
+                    popupContent += `<button onclick="showRouteToPoint(${lat}, ${lng})" class="route-btn">🚗 Navigation Route</button>`;
+                    
+                    layer.bindPopup(popupContent);
                 }
             }
-            popupContent += "</table>";
-            
-            var lat = layer.getLatLng().lat;
-            var lng = layer.getLatLng().lng;
-            popupContent += `<button onclick="showRouteToPoint(${lat}, ${lng})" class="route-btn">🚗 Navigation Route</button>`;
-            
-            layer.bindPopup(popupContent);
-        }
-    }).addTo(map);
+        }).addTo(map);
 
-    // മാപ്പ് കൃത്യമായി പോയിന്റിലേക്ക് മാക്സിമം സൂം ചെയ്യുന്നു
-    map.fitBounds(gisLayer.getBounds(), { maxZoom: 18, padding: [50, 50] });
+        // 💡 ഫയലിലുള്ള എല്ലാ പോയിന്റുകളിലേക്കും മാപ്പ് തനിയെ നല്ലവണ്ണം സൂം ചെയ്യും
+        var bounds = gisLayer.getBounds();
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { maxZoom: 18, padding: [50, 50] });
+        }
+    })
+    .catch(error => {
+        alert(error.message);
+    });
 }
 
 function showRouteToPoint(destLat, destLng) {
     if (!userLatLng) {
-        alert("മൊബൈൽ ലൊക്കേഷൻ ലഭ്യമായിട്ടില്ല. GPS പെർമിഷൻ നൽകുക.");
+        alert("മൊബൈൽ ലൊക്കേഷൻ ലഭ്യമായിട്ടില്ല. GPS ഓൺ ചെയ്യുക.");
         return;
     }
     if (routingControl !== null) {
