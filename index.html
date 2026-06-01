@@ -159,4 +159,93 @@ function loadGisDataFromFolder() {
             onEachFeature: function (feature, layer) {
                 if (feature.properties) {
                     var props = feature.properties;
-                    var labelText = props
+                    var labelText = props["RE-MARK"] || props["RE_MARK"] || props["Name"] || "Benchmark";
+                    
+                    if (labelText) {
+                        layer.bindTooltip(labelText, {permanent: true, direction: 'top', className: 'custom-label', offset: [0, -6]});
+                    }
+
+                    var layerId = L.stamp(layer);
+                    featuresMap[layerId] = layer;
+                    
+                    var option = document.createElement("option");
+                    option.value = layerId;
+                    option.textContent = labelText;
+                    selector.appendChild(option);
+
+                    var popupContent = "<div class='popup-title'>Attribute Data</div><table class='gis-table'>";
+                    for (var key in props) {
+                        if (props.hasOwnProperty(key) && !['styleUrl', 'styleHash', 'description'].includes(key)) {
+                            popupContent += "<tr><td><b>" + key + "</b></td><td>" + props[key] + "</td></tr>";
+                        }
+                    }
+                    popupContent += "</table>";
+                    
+                    var lat = layer.getLatLng().lat;
+                    var lng = layer.getLatLng().lng;
+                    popupContent += `<button onclick="showRouteToPoint(${lat}, ${lng})" class="route-btn">🚗 Navigation Route</button>`;
+                    
+                    layer.bindPopup(popupContent, { maxWidth: 260 });
+                }
+            }
+        }).addTo(map);
+
+        var bounds = gisLayer.getBounds();
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { maxZoom: 18, padding: [30, 30] });
+        }
+    })
+    .catch(error => {
+        alert(error.message);
+    });
+}
+
+// 📱 ലിസ്റ്റിൽ നിന്ന് സെലക്ട് ചെയ്യുമ്പോൾ സൂപ്പർ-സൂം ആകാനും റൂട്ട് വരയ്ക്കാനുമുള്ള ലോജിക്
+function navigateToSelectedPoint(layerId) {
+    if (!layerId) return;
+    var layer = featuresMap[layerId];
+    if (layer) {
+        var latLng = layer.getLatLng();
+        
+        // 💡 അടുത്തടുത്തുള്ള പോയിന്റുകൾ വ്യക്തമായി പിരിഞ്ഞു കാണാൻ മാക്സിമം സൂം ലെവൽ (Zoom 23) സെറ്റ് ചെയ്തു
+        map.setView(latLng, 23, { animate: true, duration: 1 });
+        
+        layer.openPopup();
+        
+        if (userLatLng) {
+            showRouteToPoint(latLng.lat, latLng.lng);
+        }
+    }
+}
+
+function zoomToMyLocation() {
+    if (userLatLng) {
+        map.setView(userLatLng, 19, { animate: true, duration: 1 });
+    } else {
+        alert("മൊബൈൽ ലൊക്കേഷൻ ലഭ്യമായിട്ടില്ല. GPS ഓൺ ചെയ്യുക.");
+    }
+}
+
+function showRouteToPoint(destLat, destLng) {
+    if (!userLatLng) return;
+    
+    if (routingControl !== null) {
+        map.removeControl(routingControl);
+    }
+
+    routingControl = L.Routing.control({
+        waypoints: [
+            L.latLng(userLatLng.lat, userLatLng.lng),
+            L.latLng(destLat, destLng)
+        ],
+        routeWhileDragging: false,
+        addWaypoints: false,
+        lineOptions: {
+            styles: [{ color: '#00ffcc', opacity: 0.9, weight: 6 }]
+        }
+    }).addTo(map);
+}
+</script>
+
+</body>
+</html>
