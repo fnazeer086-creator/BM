@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="ml">
 <head>
     <title>Bench Mark Location Platform</title>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -11,39 +11,62 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1e3c72; }
-        #map { height: 100vh; width: 100%; display: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1e3c72; overflow: hidden; }
+        #map { height: 100%; width: 100%; display: none; position: absolute; top: 0; bottom: 0; left: 0; right: 0; }
         
-        .login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
-        .login-box { padding: 40px 30px; width: 340px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; }
-        .login-box h2 { margin: 0 0 10px 0; color: #1e3c72; font-size: 24px; font-weight: 700; }
-        .login-box p { color: #666; font-size: 13px; margin-bottom: 25px; }
-        .login-box input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: #f8f9fa; }
-        .login-box button { width: 98%; padding: 12px; background: #1e3c72; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .login-box button:hover { background: #2a5298; }
+        /* ലോഗിൻ സ്ക്രീൻ */
+        .login-screen { display: flex; justify-content: center; align-items: center; height: 100vh; width: 100%; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+        .login-box { padding: 30px 25px; width: 85%; max-width: 340px; background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); text-align: center; box-sizing: border-box; }
+        .login-box h2 { margin: 0 0 8px 0; color: #1e3c72; font-size: 22px; font-weight: 700; }
+        .login-box p { color: #666; font-size: 13px; margin: 0 0 20px 0; }
+        .login-box input { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 15px; background: #f8f9fa; box-sizing: border-box; }
+        .login-box button { width: 100%; padding: 14px; background: #1e3c72; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 12px; box-shadow: 0 4px 12px rgba(30,60,114,0.3); }
         
-        .designer-credits { margin-top: 30px; font-size: 11px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; }
+        .designer-credits { margin-top: 25px; font-size: 10px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; }
         .designer-credits strong { color: #1e3c72; }
 
-        .map-footer { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255, 255, 255, 0.9); padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #333; box-shadow: 0 2px 10px rgba(0,0,0,0.2); border: 1px solid #ddd; pointer-events: none; }
+        /* മൊബൈൽ സെലക്ഷൻ മെനു */
+        .select-container {
+            position: absolute; top: 12px; left: 12px; right: 70px; z-index: 1100;
+            display: none; background: white; padding: 4px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25); border: 1px solid #1e3c72;
+        }
+        .point-selector {
+            width: 100%; padding: 10px; font-size: 14px; font-weight: bold;
+            color: #1e3c72; border: none; background: white; outline: none; cursor: pointer;
+        }
+
+        /* കറന്റ് ലൊക്കേഷൻ ഫ്ലോട്ടിങ് ബട്ടൺ */
+        .locate-btn {
+            position: absolute; bottom: 45px; right: 16px; z-index: 1100; display: none;
+            width: 50px; height: 50px; background: #ffffff; color: #1e3c72; border: 2px solid #1e3c72;
+            border-radius: 50%; font-size: 22px; font-weight: bold; justify-content: center;
+            align-items: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ഫൂട്ടർ ബാനർ */
+        .map-footer { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 5px 12px; border-radius: 15px; font-size: 10px; font-weight: bold; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.2); white-space: nowrap; pointer-events: none; }
         .map-footer span { color: #1e3c72; }
 
-        .gis-table { width: 100%; border-collapse: collapse; margin-top: 8px; border-radius: 6px; overflow: hidden; }
-        .gis-table td { border: 1px solid #eef2f5; padding: 8px 10px; font-size: 13px; color: #495057; }
+        /* ടേബിൾ & പോപ്പ്അപ്പ് */
+        .gis-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        .gis-table td { border: 1px solid #eef2f5; padding: 6px 8px; font-size: 12px; color: #495057; }
         .gis-table tr:nth-child(odd){ background-color: #f8f9fa; }
-        .gis-table td:first-child { font-weight: bold; color: #1e3c72; width: 40%; }
-        .popup-title { font-weight: bold; color: #1e3c72; border-bottom: 2px solid #1e3c72; padding-bottom: 5px; margin-bottom: 5px; font-size: 15px; }
-        
-        .route-btn { display: block; text-align: center; background: #007bff; color: white; border: none; padding: 10px; margin-top: 10px; border-radius: 6px; font-size: 13px; font-weight: bold; width: 100%; cursor: pointer; transition: background 0.2s; }
-        .route-btn:hover { background: #0056b3; }
+        .gis-table td:first-child { font-weight: bold; color: #1e3c72; width: 35%; }
+        .popup-title { font-weight: bold; color: #1e3c72; border-bottom: 2px solid #1e3c72; padding-bottom: 4px; margin-bottom: 4px; font-size: 14px; }
+        .route-btn { display: block; text-align: center; background: #007bff; color: white; border: none; padding: 12px; margin-top: 10px; border-radius: 8px; font-size: 14px; font-weight: bold; width: 100%; cursor: pointer; box-sizing: border-box; }
 
         .custom-label {
             background: transparent !important; border: none !important; box-shadow: none !important;
-            font-size: 14px !important; font-weight: bold !important; color: #ffffff !important;
+            font-size: 13px !important; font-weight: bold !important; color: #ffffff !important;
             text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000; 
         }
         
+        .leaflet-control-layers { border-radius: 8px !important; box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important; margin-top: 12px !important; }
         .leaflet-routing-container { display: none !important; }
     </style>
 </head>
@@ -53,7 +76,7 @@
     <div class="login-box">
         <h2>Bench Mark Platform</h2>
         <p>Location & Routing GIS System</p>
-        <input type="text" id="username" placeholder="Username" autocomplete="off">
+        <input type="text" id="username" placeholder="Username" autocomplete="off" autocapitalize="none">
         <input type="password" id="password" placeholder="Password">
         <button onclick="checkLogin()">Secure Login</button>
         <div class="designer-credits">Designed by <strong>Faisal Nazeer</strong></div>
@@ -61,30 +84,51 @@
 </div>
 
 <div id="map">
-    <div class="map-footer">Bench Mark Location Platform | Designed by <span>Faisal Nazeer</span></div>
+    <div id="selectContainer" class="select-container">
+        <select id="pointSelector" class="point-selector" onchange="navigateToSelectedPoint(this.value)">
+            <option value="">🔍 Select Benchmark Point...</option>
+        </select>
+    </div>
+
+    <button id="locateBtn" class="locate-btn" onclick="zoomToMyLocation()">🎯</button>
+
+    <div class="map-footer">Bench Mark Platform | <span>Faisal Nazeer</span></div>
 </div>
 
 <script>
 var map;
 var userLatLng = null;
 var routingControl = null;
+var featuresMap = {};
+
+// 🔒 സുരക്ഷാ മാറ്റങ്ങൾ ഇവിടെയാണ്:
+var ALLOWED_USER = "faisal";
+// "@Sajco" എന്ന പാസ്‌വേഡിന്റെ സുരക്ഷിതമായ SHA-256 ഹാഷ് കോഡ് താഴെ നൽകുന്നു:
+var PASSWORD_HASH = "e760c49a626227dfbb500c25a1e74a81b369da993700b093375f0a071597b872";
 
 function checkLogin() {
-    var user = document.getElementById("username").value;
-    var pass = document.getElementById("password").value;
+    var userInput = document.getElementById("username").value.trim().toLowerCase();
+    var passInput = document.getElementById("password").value;
     
-    if(user === "faisal" && pass === "@Sajco") {
+    // യൂസർ ടൈപ്പ് ചെയ്യുന്ന പാസ്‌വേഡിനെ തത്സമയം SHA-256 ഹാഷ് ആക്കി മാറ്റുന്നു
+    var inputHash = CryptoJS.SHA256(passInput).toString();
+    
+    // ഹാഷുകൾ തമ്മിലാണ് ഇവിടെ ഒത്തുനോക്കുന്നത്, അതുകൊണ്ട് ശരിക്കുള്ള പാസ്‌വേഡ് കോഡിൽ എവിടെയും ഇല്ല!
+    if(userInput === ALLOWED_USER && inputHash === PASSWORD_HASH) {
         document.getElementById("loginScreen").style.display = "none";
         document.getElementById("map").style.display = "block";
+        document.getElementById("selectContainer").style.display = "block";
+        document.getElementById("locateBtn").style.display = "flex";
         initMap();
+        setTimeout(function() { map.invalidateSize(); }, 200);
     } else {
-        alert("🔒 പാസ്‌വേഡ് പരിശോധിക്കുക.");
+        alert("🔒 ലോഗിൻ വിവരങ്ങൾ തെറ്റാണ്. വീണ്ടും ശ്രമിക്കുക.");
     }
 }
 
 function initMap() {
-    // സൗദി അറേബ്യയുടെ റീജിയണിലേക്ക് ഡിഫോൾട്ട് സെറ്റ് ചെയ്യുന്നു
-    map = L.map('map').setView([24.0, 45.0], 6);
+    map = L.map('map', { zoomControl: false }).setView([24.0, 45.0], 6);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
     var satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -94,12 +138,11 @@ function initMap() {
     satelliteMap.addTo(map);
 
     var baseMaps = {
-        "Satellite View": satelliteMap,
-        "Normal Street Map": streetMap
+        "Satellite": satelliteMap,
+        "Street Map": streetMap
     };
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
-    // ലൈവ് ജിപിഎസ് ലൊക്കേഷൻ
     map.locate({setView: false, watch: true, enableHighAccuracy: true});
     map.on('locationfound', function(e) {
         userLatLng = e.latlng;
@@ -110,24 +153,36 @@ function initMap() {
         }
     });
 
-    // 💡 ഇവിടെയാണ് മാറ്റം: നിങ്ങളുടെ 'data.geojson' ഫയലിലുള്ള എല്ലാ പോയിന്റുകളും ഒന്നിച്ച് ലോഡ് ചെയ്യും
     loadGisDataFromFolder();
 }
 
 function loadGisDataFromFolder() {
     fetch('data.geojson')
     .then(response => {
-        if (!response.ok) throw new Error("data.geojson ഫയൽ ലിങ്കിൽ കണ്ടെത്താൻ കഴിഞ്ഞില്ല!");
+        if (!response.ok) throw new Error("data.geojson ഫയൽ കണ്ടെത്താൻ കഴിഞ്ഞില്ല!");
         return response.json();
     })
     .then(geojsonData => {
+        var selector = document.getElementById("pointSelector");
+        selector.innerHTML = '<option value="">🔍 Select Benchmark Point...</option>';
+
         var gisLayer = L.geoJSON(geojsonData, {
             onEachFeature: function (feature, layer) {
                 if (feature.properties) {
                     var props = feature.properties;
                     var labelText = props["RE-MARK"] || props["RE_MARK"] || props["Name"] || "Benchmark";
                     
-                    layer.bindTooltip(labelText, {permanent: true, direction: 'top', className: 'custom-label', offset: [0, -8]});
+                    if (labelText) {
+                        layer.bindTooltip(labelText, {permanent: true, direction: 'top', className: 'custom-label', offset: [0, -6]});
+                    }
+
+                    var layerId = L.stamp(layer);
+                    featuresMap[layerId] = layer;
+                    
+                    var option = document.createElement("option");
+                    option.value = layerId;
+                    option.textContent = labelText;
+                    selector.appendChild(option);
 
                     var popupContent = "<div class='popup-title'>Attribute Data</div><table class='gis-table'>";
                     for (var key in props) {
@@ -141,20 +196,37 @@ function loadGisDataFromFolder() {
                     var lng = layer.getLatLng().lng;
                     popupContent += `<button onclick="showRouteToPoint(${lat}, ${lng})" class="route-btn">🚗 Navigation Route</button>`;
                     
-                    layer.bindPopup(popupContent);
+                    layer.bindPopup(popupContent, { maxWidth: 260 });
                 }
             }
         }).addTo(map);
 
-        // 💡 ഫയലിലുള്ള എല്ലാ പോയിന്റുകളിലേക്കും മാപ്പ് തനിയെ നല്ലവണ്ണം സൂം ചെയ്യും
         var bounds = gisLayer.getBounds();
         if (bounds.isValid()) {
-            map.fitBounds(bounds, { maxZoom: 18, padding: [50, 50] });
+            map.fitBounds(bounds, { maxZoom: 18, padding: [30, 30] });
         }
     })
     .catch(error => {
         alert(error.message);
     });
+}
+
+function navigateToSelectedPoint(layerId) {
+    if (!layerId) return;
+    var layer = featuresMap[layerId];
+    if (layer) {
+        var latLng = layer.getLatLng();
+        map.setView(latLng, 19, { animate: true, duration: 1 });
+        layer.openPopup();
+    }
+}
+
+function zoomToMyLocation() {
+    if (userLatLng) {
+        map.setView(userLatLng, 17, { animate: true, duration: 1 });
+    } else {
+        alert("മൊബൈൽ ലൊക്കേഷൻ ലഭ്യമായിട്ടില്ല. GPS ഓൺ ചെയ്യുക.");
+    }
 }
 
 function showRouteToPoint(destLat, destLng) {
@@ -174,7 +246,7 @@ function showRouteToPoint(destLat, destLng) {
         routeWhileDragging: false,
         addWaypoints: false,
         lineOptions: {
-            styles: [{ color: '#00ffcc', opacity: 0.9, weight: 6 }]
+            styles: [{ color: '#00ffcc', opacity: 0.9, weight: 5 }]
         }
     }).addTo(map);
     
