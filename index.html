@@ -5,9 +5,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
+    <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- Leaflet Routing Machine -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
@@ -38,6 +40,14 @@
             border-radius: 50%; font-size: 22px; font-weight: bold; justify-content: center;
             align-items: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 💡 ക്ലിയർ റൂട്ട് ബട്ടൺ സ്റ്റൈൽ */
+        .clear-route-btn {
+            position: absolute; top: 80px; right: 12px; z-index: 1100; display: none;
+            padding: 10px 14px; background: #ff3b30; color: white; border: none;
+            border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255,59,48,0.3);
         }
 
         .map-footer { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 5px 12px; border-radius: 15px; font-size: 10px; font-weight: bold; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.2); white-space: nowrap; pointer-events: none; }
@@ -80,6 +90,9 @@
         </select>
     </div>
 
+    <!-- 💡 റൂട്ട് ക്ലിയർ ചെയ്യാനുള്ള പുതിയ ബട്ടൺ -->
+    <button id="clearRouteBtn" class="clear-route-btn" onclick="clearNavigationRoute()">❌ Clear Route</button>
+
     <button id="locateBtn" class="locate-btn" onclick="zoomToMyLocation()">🎯</button>
 
     <div class="map-footer">Bench Mark Platform | <span>Faisal Nazeer</span></div>
@@ -111,13 +124,11 @@ function checkLogin() {
 }
 
 function initMap() {
-    // 💡 മാപ്പ് സൂം ചെയ്യാവുന്ന മാക്സിമം പരിധി 24 ലേക്ക് കൂട്ടിയിരിക്കുന്നു
     map = L.map('map', { zoomControl: false, maxZoom: 24 }).setView([24.0, 45.0], 6);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 24 });
     
-    // 💡 എക്സ്ട്രീം സൂമിംഗിൽ പോലും ബ്ലാങ്ക് ആകാത്ത ഹൈ-ക്വാളിറ്റി Google Satellite / Hybrid ലെയർ
     var googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         attribution: 'Map data © Google',
         maxNativeZoom: 20,
@@ -148,7 +159,7 @@ function initMap() {
 function loadGisDataFromFolder() {
     fetch('data.geojson')
     .then(response => {
-        if (!response.ok) throw new Error("data.geojson ഫയൽ കണ്ടെത്താൻ കഴിഞ്ഞില്ല!");
+        if (!response.ok) throw new Error("data.geojson Фയൽ കണ്ടെത്താൻ കഴിഞ്ഞില്ല!");
         return response.json();
     })
     .then(geojsonData => {
@@ -200,16 +211,12 @@ function loadGisDataFromFolder() {
     });
 }
 
-// 📱 ലിസ്റ്റിൽ നിന്ന് സെലക്ട് ചെയ്യുമ്പോൾ സൂപ്പർ-സൂം ആകാനും റൂട്ട് വരയ്ക്കാനുമുള്ള ലോജിക്
 function navigateToSelectedPoint(layerId) {
     if (!layerId) return;
     var layer = featuresMap[layerId];
     if (layer) {
         var latLng = layer.getLatLng();
-        
-        // 💡 അടുത്തടുത്തുള്ള പോയിന്റുകൾ വ്യക്തമായി പിരിഞ്ഞു കാണാൻ മാക്സിമം സൂം ലെവൽ (Zoom 23) സെറ്റ് ചെയ്തു
         map.setView(latLng, 23, { animate: true, duration: 1 });
-        
         layer.openPopup();
         
         if (userLatLng) {
@@ -244,6 +251,20 @@ function showRouteToPoint(destLat, destLng) {
             styles: [{ color: '#00ffcc', opacity: 0.9, weight: 6 }]
         }
     }).addTo(map);
+
+    // 💡 റൂട്ട് ഉള്ളപ്പോൾ ക്ലീയർ ചെയ്യാനുള്ള റെഡ് ബട്ടൺ കാണിക്കുന്നു
+    document.getElementById("clearRouteBtn").style.display = "block";
+}
+
+// 💡 നാവിഗേഷൻ വഴി മാപ്പിൽ നിന്നും പൂർണ്ണമായി ഒഴിവാക്കാനുള്ള ഫങ്ക്ഷൻ
+function clearNavigationRoute() {
+    if (routingControl !== null) {
+        map.removeControl(routingControl);
+        routingControl = null;
+    }
+    // ലിസ്റ്റ് റീസെറ്റ് ചെയ്യാനും ബട്ടൺ ഹൈഡ് ചെയ്യാനും
+    document.getElementById("pointSelector").value = "";
+    document.getElementById("clearRouteBtn").style.display = "none";
 }
 </script>
 
