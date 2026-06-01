@@ -91,7 +91,6 @@ var userLatLng = null;
 var routingControl = null;
 var featuresMap = {};
 
-// 💡 ലോഗിൻ വിവരങ്ങൾ ഇവിടെ നേരിട്ട് നൽകിയിരിക്കുന്നു
 var ALLOWED_USER = "faisal";
 var ALLOWED_PASS = "@Sajco";
 
@@ -99,7 +98,6 @@ function checkLogin() {
     var userInput = document.getElementById("username").value.trim().toLowerCase();
     var passInput = document.getElementById("password").value;
     
-    // ഒരു കൺഫ്യൂഷനും ഇല്ലാതെ നേരിട്ട് ഒത്തുനോക്കുന്നു
     if(userInput === ALLOWED_USER && passInput === ALLOWED_PASS) {
         document.getElementById("loginScreen").style.display = "none";
         document.getElementById("map").style.display = "block";
@@ -113,18 +111,23 @@ function checkLogin() {
 }
 
 function initMap() {
-    map = L.map('map', { zoomControl: false }).setView([24.0, 45.0], 6);
+    // 💡 മാപ്പ് സൂം ചെയ്യാവുന്ന മാക്സിമം പരിധി 24 ലേക്ക് കൂട്ടിയിരിക്കുന്നു
+    map = L.map('map', { zoomControl: false, maxZoom: 24 }).setView([24.0, 45.0], 6);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-    var satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri'
+    var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 24 });
+    
+    // 💡 എക്സ്ട്രീം സൂമിംഗിൽ പോലും ബ്ലാങ്ക് ആകാത്ത ഹൈ-ക്വാളിറ്റി Google Satellite / Hybrid ലെയർ
+    var googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: 'Map data © Google',
+        maxNativeZoom: 20,
+        maxZoom: 24
     });
 
-    satelliteMap.addTo(map);
+    googleSatellite.addTo(map);
 
     var baseMaps = {
-        "Satellite": satelliteMap,
+        "Google Earth": googleSatellite,
         "Street Map": streetMap
     };
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
@@ -156,89 +159,4 @@ function loadGisDataFromFolder() {
             onEachFeature: function (feature, layer) {
                 if (feature.properties) {
                     var props = feature.properties;
-                    var labelText = props["RE-MARK"] || props["RE_MARK"] || props["Name"] || "Benchmark";
-                    
-                    if (labelText) {
-                        layer.bindTooltip(labelText, {permanent: true, direction: 'top', className: 'custom-label', offset: [0, -6]});
-                    }
-
-                    var layerId = L.stamp(layer);
-                    featuresMap[layerId] = layer;
-                    
-                    var option = document.createElement("option");
-                    option.value = layerId;
-                    option.textContent = labelText;
-                    selector.appendChild(option);
-
-                    var popupContent = "<div class='popup-title'>Attribute Data</div><table class='gis-table'>";
-                    for (var key in props) {
-                        if (props.hasOwnProperty(key) && !['styleUrl', 'styleHash', 'description'].includes(key)) {
-                            popupContent += "<tr><td><b>" + key + "</b></td><td>" + props[key] + "</td></tr>";
-                        }
-                    }
-                    popupContent += "</table>";
-                    
-                    var lat = layer.getLatLng().lat;
-                    var lng = layer.getLatLng().lng;
-                    popupContent += `<button onclick="showRouteToPoint(${lat}, ${lng})" class="route-btn">🚗 Navigation Route</button>`;
-                    
-                    layer.bindPopup(popupContent, { maxWidth: 260 });
-                }
-            }
-        }).addTo(map);
-
-        var bounds = gisLayer.getBounds();
-        if (bounds.isValid()) {
-            map.fitBounds(bounds, { maxZoom: 18, padding: [30, 30] });
-        }
-    })
-    .catch(error => {
-        alert(error.message);
-    });
-}
-
-function navigateToSelectedPoint(layerId) {
-    if (!layerId) return;
-    var layer = featuresMap[layerId];
-    if (layer) {
-        var latLng = layer.getLatLng();
-        map.setView(latLng, 19, { animate: true, duration: 1 });
-        layer.openPopup();
-    }
-}
-
-function zoomToMyLocation() {
-    if (userLatLng) {
-        map.setView(userLatLng, 17, { animate: true, duration: 1 });
-    } else {
-        alert("മൊബൈൽ ലൊക്കേഷൻ ലഭ്യമായിട്ടില്ല. GPS ഓൺ ചെയ്യുക.");
-    }
-}
-
-function showRouteToPoint(destLat, destLng) {
-    if (!userLatLng) {
-        alert("മൊബൈൽ ലൊക്കേഷൻ ലഭ്യമായിട്ടില്ല. GPS ഓൺ ചെയ്യുക.");
-        return;
-    }
-    if (routingControl !== null) {
-        map.removeControl(routingControl);
-    }
-
-    routingControl = L.Routing.control({
-        waypoints: [
-            L.latLng(userLatLng.lat, userLatLng.lng),
-            L.latLng(destLat, destLng)
-        ],
-        routeWhileDragging: false,
-        addWaypoints: false,
-        lineOptions: {
-            styles: [{ color: '#00ffcc', opacity: 0.9, weight: 5 }]
-        }
-    }).addTo(map);
-    
-    map.closePopup();
-}
-</script>
-
-</body>
-</html>
+                    var labelText = props
